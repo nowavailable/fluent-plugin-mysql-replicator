@@ -1,8 +1,13 @@
-require 'fluent/input'
+require "fluent/env"
+require "fluent/plugin/input"
+
+include Fluent::PluginHelper::Thread
 
 module Fluent::Plugin
-  class MysqlReplicatorMultiInput < Fluent::Input
+  class MysqlReplicatorMultiInput < Input
     Fluent::Plugin.register_input('mysql_replicator_multi', self)
+
+    helpers :thread
 
     def initialize
       require 'mysql2'

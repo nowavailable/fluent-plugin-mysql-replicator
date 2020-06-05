@@ -1,5 +1,6 @@
 require 'rsolr'
 require 'uri'
+require "fluent/env"
 require 'fluent/plugin/output'
 
 class Fluent::Plugin::MysqlReplicatorSolrOutput < Fluent::Plugin::Output

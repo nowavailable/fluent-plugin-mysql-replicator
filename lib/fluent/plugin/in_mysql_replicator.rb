@@ -1,6 +1,5 @@
-require 'mysql2'
-require 'digest/sha1'
-require 'fluent/plugin/input'
+require "fluent/env"
+require "fluent/plugin/input"
 
 module Fluent::Plugin
   class MysqlReplicatorInput < Fluent::Plugin::Input
@@ -20,6 +19,12 @@ module Fluent::Plugin
     config_param :interval, :string, :default => '1m'
     config_param :enable_delete, :bool, :default => true
     config_param :tag, :string, :default => nil
+
+    def initialize
+      require 'mysql2'
+      require 'digest/sha1'
+      super
+    end
 
     def configure(conf)
       super
