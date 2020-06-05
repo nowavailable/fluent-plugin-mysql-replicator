@@ -1,8 +1,13 @@
-require 'fluent/input'
+require "fluent/env"
+require "fluent/plugin/input"
+
+include Fluent::PluginHelper::Thread
 
 module Fluent::Plugin
-  class MysqlReplicatorMultiInput < Fluent::Input
+  class MysqlReplicatorMultiInput < Input
     Fluent::Plugin.register_input('mysql_replicator_multi', self)
+
+    helpers :thread
 
     def initialize
       require 'mysql2'
@@ -34,6 +39,7 @@ module Fluent::Plugin
         @mutex = Mutex.new
         @manager_db = get_manager_connection
         @manager_db.query("SET SESSION wait_timeout=1800;")
+        @manager_db.query("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED;")
         @threads << thread_create(:in_mysql_replicator_flusher) {
           @hash_table_bulk_insert = []
           @hash_table_bulk_insert_last_time = Time.now
@@ -196,7 +202,11 @@ module Fluent::Plugin
       when :delete
         query = "DELETE FROM hash_tables WHERE setting_name = '#{opts[:setting_name]}' AND setting_query_pk IN(#{opts[:ids].join(',')})"
       end
-      @manager_db.query(query) unless query.nil?
+      unless query.nil?
+        @manager_db.query("BEGIN")
+        @manager_db.query(query)
+        @manager_db.query("COMMIT")
+      end
     end
 
     def format_tag(tag, param)
@@ -237,7 +247,9 @@ module Fluent::Plugin
       query = "INSERT INTO hash_tables (setting_name,setting_query_pk,setting_query_hash)
         VALUES #{@hash_table_bulk_insert.join(',')}
         ON DUPLICATE KEY UPDATE setting_query_hash = VALUES(setting_query_hash)"
+      @manager_db.query("BEGIN")
       @manager_db.query(query)
+      @manager_db.query("COMMIT")
       @hash_table_bulk_insert.clear
       @hash_table_bulk_insert_last_time = Time.now
     end
